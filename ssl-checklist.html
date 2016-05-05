@@ -1,0 +1,222 @@
+
+<html>
+<head>
+<title>SSL Checklist for Pentesters - the Manual Cheatsheet</title>
+<body>
+<a href="http://www.exploresecurity.com"><img src="http://www.exploresecurity.com/wp-content/uploads/2013/04/header2.png" width="254" height="54" alt="" /></a>
+<h2>SSL Checklist for Pentesters - the Manual Cheatsheet</h2>
+<p>This table accompanies the presentation referenced <a href="http://www.exploresecurity.com/ssltls-checklist-for-pentesters/">here</a>. It lists various SSL/TLS checks that can be performed manually with OpenSSL or a browser. Sometimes the column "insecure result" doesn't actually refer to an insecure configuration (for example, it may be a nice-to-have) but this should be clear from the context of the issue or the comments.</p>
+<table border=â€1â€³ cellpadding=5>
+<tr>
+	<th>Issue</th>
+	<th>Manual check</th>
+	<th>Insecure result</th>
+	<th>Secure result</th>
+	<th>Comments</th>
+</tr>
+<tr>
+	<td>SSLv2</td>
+	<td><code>openssl s_client -ssl2 -connect host:port</code></td>
+	<td>It connects!</td>
+	<td>It doesn't connect!</td>
+	<td>OpenSSL &lt;1.0.0</td>
+</tr>
+<tr>
+	<td>SSLv3</td>
+	<td><code>openssl s_client -ssl3 -connect host:port</code></td>
+	<td>It connects!</td>
+	<td>It doesn't connect!</td>
+	<td>Disable to prevent POODLE attack - and it's generally old and creaky anyway - but doing so will stop default instances of IE6 connecting</td>
+</tr>
+<tr>
+	<td>TLS > v1.0</td>
+	<td><code>openssl s_client -tls1_1 -connect host:port<br>openssl s_client -tls1_2 -connect host:port</code></td>
+	<td>It doesn't connect!</td>
+	<td>It connects!</td>
+	<td>OpenSSL >1.0.0<br>Not insecure if missing but see presentation</td>
+</tr>
+<tr>
+	<td>Secure renegotiation <em>supported</em></td>
+	<td><code>openssl s_client -connect host:port</code></td>
+	<td>OpenSSL output reports "Secure Renegotiation IS NOT supported"</td>
+	<td>OpenSSL output reports "Secure Renegotiation IS supported"</td>
+	<td>OpenSSL >0.9.8l (BackTrack 5 R3 had a patched v0.9.8k that worked)<br>If it's not supported but client-initiated renegotiation is disabled then it's not an issue</td>
+</tr>
+<tr>
+	<td>Client-initiated <em>secure</em> renegotiation enabled</td>
+	<td><code>openssl s_client -connect host:port<br>HEAD / HTTP/1.0<br>R<br>&lt;CRLF&gt;</code></td>
+	<td>Renegotation succeeds at R<br>HTTP response returned</td>
+	<td>Renegotiation fails at R</td>
+	<td>OpenSSL >0.9.8l<br>Add <code>-crlf</code> if HTTP response not returned<br>DoS attack</td>
+</tr>
+<tr>
+	<td>Client-initiated <em>insecure</em> renegotiation</td>
+	<td><code>openssl s_client -connect host:port<br>HEAD / HTTP/1.0<br>R<br>&lt;CRLF&gt;</code></td>
+	<td>Renegotation succeeds at R<br>HTTP response returned</td>
+	<td>Renegotiation fails at R</td>
+	<td>OpenSSL &lt;0.9.8l (BackTrack 5 R3 had a patched v0.9.8k that worked)<br>Add <code>-crlf</code> if HTTP response not returned<br>CVE-2009-3555 and DoS</td>
+</tr>
+<tr>
+	<td>Public key size &lt;= 1024-bit</td>
+	<td><code>openssl s_client -connect host:port</code></td>
+	<td>OpenSSL output reports "Server public key is " &lt;=1024 " bit"</td>
+	<td>OpenSSL output reports "Server public key is " &gt;1024 " bit"</td>
+	<td></td>
+</tr>
+<tr>
+	<td>Invalid certificate chain</td>
+	<td>Use browser (not through proxy)</td>
+	<td>Certificate error</td>
+	<td>No certificate error</td>
+	<td>Is your browser checking for revocation (up the entire chain)? - see presentation</td>
+</tr>
+<tr>
+	<td>Certificate expired</td>
+	<td>Use browser (not through proxy)</td>
+	<td>Certificate error</td>
+	<td>No certificate error</td>
+	<td>Is your date/time correct?</td>
+</tr>
+<tr>
+	<td>Certificate with imminent expiry</td>
+	<td>Use browser (not through proxy)<br>Examine certificate field expiry date</td>
+	<td>Less than a month to go</td>
+	<td>More than a month to go</td>
+	<td>Obviously not insecure (yet): just for client's information</td>
+</tr>
+<tr>
+	<td>EV certificate</td>
+	<td>Use browser (not through proxy)<br>Examine address bar</td>
+	<td>Address bar not green</td>
+	<td>Address bar green</td>
+	<td>Exactly where the address bar is green depends on the browser<br>Not insecure if missing</td>
+</tr>
+<tr>
+	<td>Certificate signed using MD5 or SHA-1</td>
+	<td>Use browser (not through proxy)<br>Examine certificate's signature [hash] algorithm field</td>
+	<td>MD5 or SHA-1</td>
+	<td>One of the SHA-2 family</td>
+	<td></td>
+</tr>
+<tr>
+	<td>Certificate revocation mechanisms</td>
+	<td>Use browser (not through proxy)<br>Examine certificate CRL and AIA fields</td>
+	<td>Field missing</td>
+	<td>Both fields populated</td>
+	<td>If AIA field missing, browser may not check CRL</td>
+</tr>
+<tr>
+	<td>Certificate revoked including upstream chain</td>
+	<td>Use Internet Explorer (not through proxy) with registry change:<br><code>HKEY_CURRENT_USER\Software\Microsoft\Internet Explorer\Main\FeatureControl\FEATURE_WARN_ON_SEC_CERT_REV_FAILED<br>iexplore.exe=1 (DWORD)</code></td>
+	<td>Certificate error</td>
+	<td>No certificate error with no warning about inability to check revocation</td>
+	<td>Opera apparently also does OCSP with CRL fallback for whole chain</td>
+</tr>
+<tr>
+	<td>OCSP Stapling</td>
+	<td><code>openssl s_client -status -tlsextdebug -connect site:port</code></td>
+	<td>Cert status: revoked or unknown (invalid test)</td>
+	<td>Cert status: good</td>
+	<td>RFC2560: good means "the certificate is not revoked, but does not necessarily mean that the certificate was ever issued or that the time at which the response was produced is within the certificate's validity interval"</td>
+</tr>
+<tr>
+	<td>Certificate subject</td>
+	<td>Use browser (not through proxy)<br>Examine certificate subject and subject alternative names fields</td>
+	<td>Mismatch between subject and hostname<br>Wildcard certificate</td>
+	<td>Certificate valid for target hostname (with or without www prefix)<br>No wildcard</td>
+	<td></td>
+</tr>
+<tr>
+	<td>Invalid certificate when Server Name Indication (SNI) missing</td>
+	<td>Compare certificate returned from <code>openssl s_client -connect site:port</code> with and without <code>-servername &lt;HOSTNAME&gt;</code> option</td>
+	<td>Invalid certificate returned without <code>-servername</code> option</td>
+	<td>Valid certificate returned without <code>-servername</code> option</td>
+	<td><code>-ssl3</code> should show same result as test without <code>-servername</code></td>
+</tr>
+<tr>
+	<td>Weak cipher suites</td>
+	<td><code>openssl s_client -cipher NULL,EXPORT,LOW,3DES -connect site:port</code></td>
+	<td>Connection succeeds with &lt;128-bit or Triple DES cipher</td>
+	<td>Connection fails</td>
+	<td>If successful, this will only prove that one of possibly many such ciphers is supported: tools are more comprehensive<br>Use just EXPORT to check for exposure to <a href="https://www.smacktls.com/">FREAK</a></td>
+</tr>
+<tr>
+	<td>Anonymous cipher suites</td>
+	<td><code>openssl s_client -cipher aNULL -connect site:port</code></td>
+	<td>Connection succeeds</td>
+	<td>Connection fails</td>
+	<td>If successful, this will only prove that one of possibly many such ciphers is supported: tools are more comprehensive</td>
+</tr>
+<tr>
+	<td>Server preference</td>
+	<td><code>openssl s_client [-ssl2|-ssl3|tls1|tls1_1|tls1_2] -cipher &lt;CIPHERS&gt; -connect site:port</code><br>Change the order of CIPHERS to change client preference e.g. <code>DEFAULT:+RC4</code> will make RC4 ciphers in the default set the <em>least</em> preferred</td>
+	<td>A preferred cipher will be selected irrespective of client's preference</td>
+	<td></td>
+	<td>For valid CIPHERS values refer to <code>man ciphers</code> or <a href="https://testssl.sh/openssl-rfc.mappping.html">here</a> or <a href="https://wiki.mozilla.org/Security/Server_Side_TLS#Cipher_names_correspondence_table">here</a><br>Different cipher suites may be supported per protocol<br>Only insecure if preferred cipher is weak<br>Cipher suite order recommendations from <a href="https://wiki.mozilla.org/Security/Server_Side_TLS#Recommended_configurations">Mozilla</a><br>I wrote a post on this topic <a href='http://www.exploresecurity.com/testing-for-cipher-suite-preference/'>here</a>.</td>
+</tr>
+<tr>
+	<td>Forward Secrecy</td>
+	<td><code>openssl s_client -cipher EDH,EECDH -connect site:port</code></td>
+	<td>Unsupported<br>Supported but not preferred</td>
+	<td>Supported and preferred</td>
+	<td>OpenSSL >=1.0.0 (later versions will tend to support more ephemeral ciphers)</td>
+</tr>
+<tr>
+	<td>RC4</td>
+	<td><code>openssl s_client -cipher RC4 -connect site:port</code></td>
+	<td>Connection succeeds</td>
+	<td>Connection fails</td>
+	<td>If successful, this will only prove that one of possibly many such ciphers is supported: tools are more comprehensive<br>Also check server preference</td>
+</tr>
+<tr>
+	<td>CRIME</td>
+	<td><code>openssl s_client -connect site:port</code></td>
+	<td>OpenSSL output "Compression:" line is not "NONE", e.g. "zlib compression"</td>
+	<td>OpenSSL output "Compression: NONE"</td>
+	<td>Ensure the OpenSSL version in use supports compression: check Client Hello in Wireshark for a list of Compression Methods</td>
+</tr>
+<tr>
+	<td>CRIME (SPDY)</td>
+	<td><code>openssl s_client -nextprotoneg NULL -connect site:port</code><br>Examine OpenSSL output "Protocols advertised by server"</td>
+	<td>Protocol list includes SPDY version &lt;4</td>
+	<td>No "Protocols advertised by server" or line does not include SPDY version &lt;4</td>
+	<td>SPDY version 4 said to address the problem but not yet released</td>
+</tr>
+<tr>
+	<td>Heart<em>beat</em> enabled</td>
+	<td><code>openssl s_client -tlsextdebug -connect site:port</code></td>
+	<td>OpenSSL reports "TLS server extension heartbeat"</td>
+	<td>Heartbeat disabled</td>
+	<td>OpenSSL >=1.0.1</td>
+</tr>
+<tr>
+	<td>Heart<em>bleed</em></td>
+	<td>Tools only</td>
+	<td></td>
+	<td></td>
+	<td>Be wary of buggy tools that report <a href='http://www.hut3.net/blog/cns---networks-security/2014/04/14/bugs-in-heartbleed-detection-scripts-'>false negatives</a> [thanks to @anantshri]<br>Some tools are more aggressive than others<br>If tool relies on OpenSSL then 1.0.1-1.0.1f</td>
+</tr>
+<tr>
+	<td>Change Cipher Spec (CCS) flaw</td>
+	<td>Tools only</td>
+	<td></td>
+	<td></td>
+	<td>If tool relies on OpenSSL then &lt;1.0.1h, &lt;1.0.0m, &lt;0.9.8za</td>
+</tr>
+<tr>
+	<td>POODLE</td>
+	<td>For SSL, check for SSLv3 (above)<br>For TLS, refer to this <a href="http://www.exploresecurity.com/testing-for-poodle_tls-manually/">posting</a></td>
+	<td></td>
+	<td></td>
+	<td></td>
+</tr>
+<tr>
+	<td>TLS_FALLBACK_SCSV support</td>
+	<td><code>openssl s_client -ssl3 -fallback_scsv -connect site:port</code><br><code>-ssl3</code> specifically with POODLE in mind but it's bigger than that</td>
+	<td>It connects</td>
+	<td>It fails with "inappropriate fallback" alert</td>
+	<td>OpenSSL &gt;=1.0.1j<br>See my <a href='http://www.exploresecurity.com/poodle-and-the-tls_fallback_scsv-remedy/'/>other</a> <a href='http://www.exploresecurity.com/thoughts-on-testing-for-poodle/'>posts</a> for more info.</td>
+</tr>
+</table>
+</body>
+</html>
