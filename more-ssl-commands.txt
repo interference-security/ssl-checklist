@@ -1,0 +1,35 @@
+Below commands are for a list of IP:Port as an input file:
+
+For SSL certificate validity dates:
+for data in `cat input_filename.txt`; do echo "$data:"; echo | openssl s_client -connect $data 2>/dev/null | openssl x509 -noout -dates; done
+
+For SSL certificate issuer:
+for data in `cat input_filename.txt`; do echo "$data:"; echo | openssl s_client -connect $data 2>/dev/null | openssl x509 -noout -issuer; done
+
+For SSL certificate issued to:
+for data in `cat input_filename.txt`; do echo "$data:"; echo | openssl s_client -connect $data 2>/dev/null | openssl x509 -noout -subject; done
+
+For SSL certificate fingerprint:
+for data in `cat input_filename.txt`; do echo "$data:"; echo | openssl s_client -connect $data 2>/dev/null | openssl x509 -noout -fingerprint; done
+
+For complete SSL information provided by the host:port :
+for data in `cat input_filename.txt`; do echo "$data:"; echo | openssl s_client -connect $data 2>/dev/null | openssl x509 -noout -text; done
+
+
+
+Below commands are for single IP:Port to test:
+
+For SSL certificate validity dates:
+echo | openssl s_client -connect HOST:PORT 2>/dev/null | openssl x509 -noout -dates
+
+For SSL certificate issuer:
+echo | openssl s_client -connect HOST:PORT 2>/dev/null | openssl x509 -noout -issuer
+
+For SSL certificate issued to:
+echo | openssl s_client -connect HOST:PORT 2>/dev/null | openssl x509 -noout -subject
+
+For SSL certificate fingerprint:
+echo | openssl s_client -connect HOST:PORT 2>/dev/null | openssl x509 -noout -fingerprint
+
+For complete SSL information provided by the host:port :
+echo | openssl s_client -connect HOST:PORT 2>/dev/null | openssl x509 -noout -text
